@@ -1,0 +1,11 @@
+^screenlog\..
+^pkg
+^last_run$
+^coverage
+^doc/coverage
+^doc/Specifications$
+^.conductor
+^.bundle
+^.rspec
+^TODO$
+^conductor.log$
