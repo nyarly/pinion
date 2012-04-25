@@ -1,6 +1,48 @@
-Because I only do this occasionally, a quick primer on how to propagate
-changes from this project out to the ones based on it:
+Pinion is a counterpoint to Rack. 
 
-mtn propagate com.redfivellc.ruby-work.gembase <destination-branch>
-mtn update
+Rack is structured around the idea of middleware: a series of effectively 
+unstructured objects wrap each other, pushing a simple dictionary that 
+represents an HTTP request/response transaction down to the bottommost, 
+modifying it on the way.
 
+Rack is based on WSGI and PEP333, and about the time that Rack was getting 
+attention, I saw an article criticizing the middleware approach for HTTP 
+servers.  The concept for Pinion is inspired by that article (which I haven't 
+been able to find since - I'd love to see it again.)
+
+Then, @tenderlove gave a keynote at RailsConf at 2011 where (amongst lots of 
+other things) pointed out those same criticisms and put forth that Rack was 
+part of the reason that Rails can be slow (or at least, so I understood him to 
+say.)
+
+Basically, the criticism is that middleware force a structure that might not 
+make sense, and their independant handling of the request structure leads to a 
+lot of repeated effort.
+
+Pinion flips the processing around.  Instead of a function-object composition 
+model, Pinion arranges HTTP processing in a pipeline.  Instead of middleware, 
+Pinion puts together a chain of steps, parses incoming requests into an 
+HTTP::Transaction object and hands that to the first step.
+
+Each step performs whatever processing it wants on the Transaction, and then 
+returns the next step - so steps can control the processing pipeline.  (An 
+important case here is that every step has a "next on error" step.)
+
+Advantages of this approach are:
+
+The Transaction has some intelligence - for instance, if we ever need to parse 
+the body of the HTTP response into, say, a Nokogiri document, the Transaction 
+can be taught to do that an cache the result.  (Future work on Pinion would be 
+on how to generalize the process of memoizing work and dirtying memos.)
+
+Steps can occur in exactly the order they need to.  For instance, A step just
+before we hand off to the app can open a database connection, while the step to
+close the connection can be close to the last thing we do - after finalizing a
+streaming response.
+
+The backtrace of a Pinion application is much shallower than that of a Rack 
+stack - in theory we use stack space to store similiar information less often.
+
+Finally, it's much easier to manipulate a chain of steps than it is to change 
+the structure of a middleware stack, so it's easier to extend an existing 
+application.
